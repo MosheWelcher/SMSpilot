@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          body { font-family: 'Segoe UI', sans-serif; padding: 40px; background: #f4f4f4; color: #333; text-align: center; }
+          .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+          h1 { margin-top: 0; color: #00AFF0; }
+          
+          /* Status Log Styles */
+          .status-box { 
+            background: #2d2d2d; 
+            color: #00ff00; 
+            font-family: monospace; 
+            padding: 15px; 
+            border-radius: 5px; 
+            text-align: left; 
+            height: 150px; 
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+          }
+          .status-line { margin: 5px 0; border-bottom: 1px solid #444; padding-bottom: 2px;}
+          .success { color: #00ff00; }
+          .error { color: #ff4444; font-weight: bold; }
+          .pending { color: #ffff00; }
+
+          .hidden { display: none; }
+          #final-success { margin-top: 20px; color: green; font-weight: bold; font-size: 1.2em; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Setting Up "SMSpilot"</h1>
+          <p>Please wait while we configure your group and bot...</p>
+          
+          <div id="status-log" class="status-box">
+            <div class="status-line pending">Initializing...</div>
+          </div>
+
+          <div id="final-success" class="hidden">
+            All steps complete! You can close this window.
+          </div>
+        </div>
+
+        <script>
+          // 1. Retrieve Token injected by the Server
+          var ACCESS_TOKEN = "<?= token ?>";
+          var GLOBAL_GROUP_ID = null;
+
+          // Helper to add log messages
+          function log(msg, type) {
+            var logBox = document.getElementById('status-log');
+            var div = document.createElement('div');
+            div.className = "status-line " + (type || "");
+            div.innerText = "> " + msg;
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight; // Auto-scroll
+          }
+
+          // --- STEP 1: Create Group ---
+          function startSetup() {
+            log("Step 1: Creating Group 'SMSpilot'...", "pending");
+            google.script.run
+              .withSuccessHandler(onGroupCreated)
+              .withFailureHandler(onError)
+              .createGroup(ACCESS_TOKEN);
+          }
+
+          function onGroupCreated(groupId) {
+            GLOBAL_GROUP_ID = groupId;
+            log("Success: Group Created (ID: " + groupId + ")", "success");
+            
+            // Trigger Step 2
+            log("Step 2: Registering Bot...", "pending");
+            google.script.run
+              .withSuccessHandler(onBotCreated)
+              .withFailureHandler(onError)
+              .createBot(ACCESS_TOKEN, GLOBAL_GROUP_ID);
+          }
+
+          // --- STEP 2: Bot Created ---
+          function onBotCreated() {
+            log("Success: Bot registered to script.", "success");
+
+            // Trigger Step 3
+            log("Step 3: Saving Credentials...", "pending");
+            google.script.run
+              .withSuccessHandler(onTokenSaved)
+              .withFailureHandler(onError)
+              .saveToken(GLOBAL_GROUP_ID, ACCESS_TOKEN);
+          }
+
+          // --- STEP 3: Token Saved (Finished) ---
+          function onTokenSaved() {
+            log("Success: Token saved to Script Properties.", "success");
+            log("SETUP COMPLETE.", "success");
+            document.getElementById('final-success').classList.remove('hidden');
+          }
+
+          function onError(err) {
+            log("ERROR: " + err, "error");
+          }
+
+          // Start the chain when page loads
+          window.onload = startSetup;
+        </script>
+      </body>
+    </html>
